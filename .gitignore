@@ -1,0 +1,7 @@
+minirov-brain/venv/
+minirov-brain/venv311/
+minirov-brain/__pycache__/
+minirov-brain/**/__pycache__/
+*.pyc
+.DS_Store
+field-logs/
