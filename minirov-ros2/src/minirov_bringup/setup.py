@@ -25,6 +25,7 @@ setup(
         'mavlink_node = minirov_bringup.mavlink_node:main',
         'llm_node = minirov_bringup.llm_node:main',
         'operator_node = minirov_bringup.operator_node:main',
+        'logger_node = minirov_bringup.logger_node:main',
     ],
   },
 )
