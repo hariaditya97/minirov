@@ -21,8 +21,9 @@ setup(
         'test': ['pytest'],
     },
     entry_points={
-        'console_scripts': [
-            'mavlink_node = minirov_bringup.mavlink_node:main',
-        ],
-    },
+    'console_scripts': [
+        'mavlink_node = minirov_bringup.mavlink_node:main',
+        'llm_node = minirov_bringup.llm_node:main',
+    ],
+  },
 )

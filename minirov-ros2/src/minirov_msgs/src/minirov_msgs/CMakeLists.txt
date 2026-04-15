@@ -8,8 +8,6 @@ find_package(builtin_interfaces REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/VehicleState.msg"
   "msg/VehicleCommand.msg"
-  "msg/LLMResponse.msg"
-  "msg/LLMObservation.msg"
   DEPENDENCIES builtin_interfaces
 )
 
