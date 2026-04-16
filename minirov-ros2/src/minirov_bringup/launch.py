@@ -28,4 +28,10 @@ def generate_launch_description():
             name='logger_node',
             output='screen',
         ),
+        Node(
+            package='minirov_bringup',
+            executable='failsafe_node',
+            name='failsafe_node',
+            output='screen',
+        ),
     ])

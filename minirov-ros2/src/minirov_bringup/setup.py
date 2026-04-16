@@ -27,6 +27,7 @@ setup(
         'llm_node = minirov_bringup.llm_node:main',
         'operator_node = minirov_bringup.operator_node:main',
         'logger_node = minirov_bringup.logger_node:main',
+        'failsafe_node = minirov_bringup.failsafe_node:main',
     ],
   },
 )

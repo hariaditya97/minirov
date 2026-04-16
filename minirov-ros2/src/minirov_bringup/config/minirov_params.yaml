@@ -1,0 +1,16 @@
+# minirov_params.yaml — save in minirov_bringup/config/
+mavlink_node:
+  ros__parameters:
+    connection_string: "udp:0.0.0.0:14550"
+
+llm_node:
+  ros__parameters:
+    ollama_host: "http://172.16.52.1:11434"
+    model: "qwen2.5:14b"
+    monitor_interval_sec: 10.0
+
+failsafe_node:
+  ros__parameters:
+    heartbeat_warning_sec: 5.0
+    heartbeat_critical_sec: 10.0
+    operator_timeout_sec: 60.0
