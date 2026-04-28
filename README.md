@@ -24,14 +24,6 @@ Pending: hardware acquisition, bench build, pool testing, field deployment.
 - **3** Pool and tank testing
 - **4** Field deployment
 
-## Phases
-
-- **0** — Software foundations and simulation
-- **1** — Electronics bench build
-- **2** — Enclosure and frame assembly  
-- **3** — Pool and tank testing
-- **4** — Field deployment
-
 ## Author
 
 Hari Aditya
