@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>miniROV Control</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/roslib/1.3.0/roslib.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap');
+  :root {
+    --bg:#0a0e14;--surface:#111720;--border:#1e2a38;--accent:#00d4ff;
+    --green:#00ff9d;--amber:#ffb300;--red:#ff3d5a;--dim:#3a4a5c;
+    --text:#c8d8e8;--text-dim:#556677;
+    --mono:'Space Mono',monospace;--sans:'DM Sans',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100dvh;overflow-x:hidden}
+  header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;padding-top:max(14px,env(safe-area-inset-top));background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+  .logo{font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.15em;color:var(--accent);text-transform:uppercase}
+  .logo span{color:var(--text-dim)}
+  #heartbeat{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;letter-spacing:.1em}
+  #heartbeat-dot{width:9px;height:9px;border-radius:50%;background:var(--red);transition:background .4s}
+  #heartbeat-dot.live{background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  main{padding:12px;padding-bottom:max(12px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px;max-width:480px;margin:0 auto}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px}
+  .card-title{font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px}
+  .state-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .state-cell{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+  .state-cell.wide{grid-column:1/-1}
+  .state-label{font-family:var(--mono);font-size:8px;letter-spacing:.15em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px}
+  .state-value{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--accent);line-height:1}
+  .state-value.warn{color:var(--amber)}.state-value.crit{color:var(--red)}
+  .state-unit{font-size:10px;color:var(--text-dim);margin-left:2px}
+  .bar-track{height:6px;background:var(--border);border-radius:3px;margin-top:8px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:3px;width:0%;transition:width .5s ease}
+  #depth-fill{background:linear-gradient(90deg,var(--accent),var(--green))}
+  #batt-fill{background:var(--green);transition:width .5s ease,background .5s}
+  .status-row{display:flex;gap:8px;margin-bottom:10px}
+  .badge{font-family:var(--mono);font-size:10px;letter-spacing:.1em;padding:5px 10px;border-radius:20px;border:1px solid var(--border);color:var(--text-dim)}
+  .badge.armed{border-color:var(--red);color:var(--red);background:rgba(255,61,90,.1)}
+  .badge.disarmed{border-color:var(--green);color:var(--green);background:rgba(0,255,157,.08)}
+  .badge.mode{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,.08)}
+  .attitude-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}
+  #obs-feed,#cmd-feed{max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+  #cmd-feed{max-height:130px}
+  .obs-item{background:var(--bg);border-left:3px solid var(--dim);border-radius:0 6px 6px 0;padding:8px 10px;font-size:12px;line-height:1.5;animation:slideIn .3s ease}
+  .obs-item.WARNING{border-color:var(--amber)}.obs-item.CRITICAL{border-color:var(--red);background:rgba(255,61,90,.06)}.obs-item.INFO{border-color:var(--accent)}
+  .obs-severity{font-family:var(--mono);font-size:8px;letter-spacing:.15em;margin-bottom:3px}
+  .obs-item.WARNING .obs-severity{color:var(--amber)}.obs-item.CRITICAL .obs-severity{color:var(--red)}.obs-item.INFO .obs-severity{color:var(--accent)}
+  .obs-recommended{font-size:11px;color:var(--text-dim);margin-top:3px}
+  @keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+  #llm-panel{display:none}
+  #llm-panel.visible{display:block;animation:slideIn .3s ease}
+  .llm-field{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px}
+  .llm-field:last-of-type{border-bottom:none}
+  .llm-key{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--text-dim);text-transform:uppercase;flex-shrink:0;margin-right:12px}
+  .llm-val{text-align:right;color:var(--text);font-size:13px}
+  .llm-reasoning{background:var(--bg);border-radius:6px;padding:10px;font-size:12px;color:var(--text-dim);line-height:1.6;margin-top:10px;border-left:3px solid var(--accent)}
+  .llm-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+  .cmd-item{display:flex;justify-content:space-between;align-items:center;background:var(--bg);border-radius:6px;padding:7px 10px;font-size:11px;animation:slideIn .3s ease}
+  .cmd-action{font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:.08em}
+  .cmd-meta{font-size:10px;color:var(--text-dim)}
+  .controls-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
+  .mode-btn{font-family:var(--mono);font-size:9px;letter-spacing:.1em;padding:10px 6px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text-dim);cursor:pointer;transition:all .2s;text-transform:uppercase}
+  .mode-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,.08)}
+  .arm-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+  .btn{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:12px 8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);cursor:pointer;transition:all .15s;width:100%}
+  .btn:active{transform:scale(.97)}
+  .btn-confirm{background:rgba(0,255,157,.1);border-color:var(--green);color:var(--green)}
+  .btn-cancel{background:rgba(255,61,90,.08);border-color:var(--red);color:var(--red)}
+  .btn-arm{background:rgba(255,179,0,.08);border-color:var(--amber);color:var(--amber)}
+  .btn-disarm{background:rgba(0,255,157,.06);border-color:var(--green);color:var(--green)}
+  .btn-emergency{width:100%;padding:16px;font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;background:rgba(255,61,90,.12);border:1px solid var(--red);border-radius:10px;color:var(--red);cursor:pointer;transition:all .15s;position:relative;overflow:hidden}
+  .btn-emergency:active{background:rgba(255,61,90,.3);transform:scale(.98)}
+  .btn-emergency::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(-45deg,transparent,transparent 8px,rgba(255,61,90,.04) 8px,rgba(255,61,90,.04) 16px)}
+  .nl-row{display:flex;gap:8px}
+  .nl-input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;font-family:var(--sans);font-size:14px;color:var(--text);outline:none;transition:border-color .2s}
+  .nl-input:focus{border-color:var(--accent)}
+  .nl-input::placeholder{color:var(--text-dim)}
+  .nl-send{background:var(--accent);border:none;border-radius:8px;padding:12px 16px;color:var(--bg);font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;cursor:pointer;transition:opacity .2s;white-space:nowrap}
+  .nl-send:active{opacity:.8}
+  #conn-banner{background:rgba(255,61,90,.12);border:1px solid var(--red);border-radius:8px;padding:10px 14px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--red);text-align:center;display:none}
+  #conn-banner.visible{display:block}
+  .empty-state{font-size:11px;color:var(--text-dim);text-align:center;padding:12px 0;font-family:var(--mono)}
+  ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">mini<span>ROV</span> // OPS</div>
+  <div id="heartbeat"><div id="heartbeat-dot"></div><span id="heartbeat-label">OFFLINE</span></div>
+</header>
+<main>
+  <div id="conn-banner">ROSBRIDGE UNREACHABLE — ws://VM_IP:9090</div>
+
+  <div class="card">
+    <div class="card-title">Vehicle State</div>
+    <div class="status-row">
+      <div class="badge mode" id="mode-badge">UNKNOWN</div>
+      <div class="badge disarmed" id="armed-badge">DISARMED</div>
+    </div>
+    <div class="state-grid">
+      <div class="state-cell wide">
+        <div class="state-label">Depth</div>
+        <div class="state-value" id="depth-val">—<span class="state-unit">m</span></div>
+        <div class="bar-track"><div class="bar-fill" id="depth-fill"></div></div>
+      </div>
+      <div class="state-cell">
+        <div class="state-label">Battery</div>
+        <div class="state-value" id="batt-val">—<span class="state-unit">V</span></div>
+        <div class="bar-track"><div class="bar-fill" id="batt-fill"></div></div>
+      </div>
+      <div class="state-cell">
+        <div class="state-label">Heading</div>
+        <div class="state-value" id="heading-val">—<span class="state-unit">°</span></div>
+      </div>
+    </div>
+    <div class="attitude-row">
+      <div class="state-cell">
+        <div class="state-label">Roll</div>
+        <div class="state-value" id="roll-val" style="font-size:16px">—<span class="state-unit">°</span></div>
+      </div>
+      <div class="state-cell">
+        <div class="state-label">Pitch</div>
+        <div class="state-value" id="pitch-val" style="font-size:16px">—<span class="state-unit">°</span></div>
+      </div>
+      <div class="state-cell">
+        <div class="state-label">Yaw</div>
+        <div class="state-value" id="yaw-val" style="font-size:16px">—<span class="state-unit">°</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Controls</div>
+    <div class="controls-grid">
+      <button class="mode-btn" onclick="setMode('MANUAL')">Manual</button>
+      <button class="mode-btn" onclick="setMode('STABILIZE')">Stabilize</button>
+      <button class="mode-btn" onclick="setMode('DEPTH_HOLD')">Depth Hold</button>
+    </div>
+    <div class="arm-row">
+      <button class="btn btn-arm" onclick="sendArmCommand(true)">ARM</button>
+      <button class="btn btn-disarm" onclick="sendArmCommand(false)">DISARM</button>
+    </div>
+    <button class="btn-emergency" onclick="emergencySurface()">⚠ EMERGENCY SURFACE</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Command Input</div>
+    <div class="nl-row">
+      <input class="nl-input" id="nl-input" type="text"
+        placeholder="e.g. move forward slowly for 5 seconds"
+        autocomplete="off" autocorrect="off" spellcheck="false"/>
+      <button class="nl-send" onclick="sendUserInput()">SEND</button>
+    </div>
+  </div>
+
+  <div class="card" id="llm-panel">
+    <div class="card-title">⚡ LLM Proposed Command</div>
+    <div class="llm-field"><span class="llm-key">Action</span><span class="llm-val" id="llm-action">—</span></div>
+    <div class="llm-field"><span class="llm-key">Direction</span><span class="llm-val" id="llm-direction">—</span></div>
+    <div class="llm-field"><span class="llm-key">Speed</span><span class="llm-val" id="llm-speed">—</span></div>
+    <div class="llm-field"><span class="llm-key">Duration</span><span class="llm-val" id="llm-duration">—</span></div>
+    <div class="llm-field"><span class="llm-key">Safety</span><span class="llm-val" id="llm-safety" style="color:var(--amber)">—</span></div>
+    <div class="llm-reasoning" id="llm-reasoning"></div>
+    <div class="llm-actions">
+      <button class="btn btn-confirm" onclick="confirmCommand()">✓ CONFIRM</button>
+      <button class="btn btn-cancel" onclick="rejectCommand()">✕ REJECT</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">LLM Observations</div>
+    <div id="obs-feed"><div class="empty-state">No observations yet</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Command History</div>
+    <div id="cmd-feed"><div class="empty-state">No commands yet</div></div>
+  </div>
+</main>
+
+<script>
+const ROSBRIDGE_URL = 'ws://VM_IP:9090';
+const MAX_DEPTH_M = 100;
+const BATT_MAX_V = 16.8;
+const BATT_MIN_V = 13.2;
+
+let ros = null, connected = false, pendingLLMResponse = null, publishers = {};
+
+function connect() {
+  ros = new ROSLIB.Ros({ url: ROSBRIDGE_URL });
+  ros.on('connection', () => {
+    connected = true;
+    document.getElementById('heartbeat-dot').classList.add('live');
+    document.getElementById('heartbeat-label').textContent = 'LIVE';
+    document.getElementById('conn-banner').classList.remove('visible');
+    setupPublishers();
+    setupSubscriptions();
+  });
+  ros.on('error', () => { setOffline(); document.getElementById('conn-banner').classList.add('visible'); setTimeout(connect, 5000); });
+  ros.on('close', () => { setOffline(); setTimeout(connect, 5000); });
+}
+
+function setOffline() {
+  connected = false;
+  document.getElementById('heartbeat-dot').classList.remove('live');
+  document.getElementById('heartbeat-label').textContent = 'OFFLINE';
+}
+
+function setupPublishers() {
+  publishers.userInput   = new ROSLIB.Topic({ ros, name: '/minirov/user_input',   messageType: 'std_msgs/String' });
+  publishers.armCommand  = new ROSLIB.Topic({ ros, name: '/minirov/arm_command',  messageType: 'std_msgs/Bool' });
+  publishers.modeCommand = new ROSLIB.Topic({ ros, name: '/minirov/mode_command', messageType: 'std_msgs/String' });
+  publishers.commands    = new ROSLIB.Topic({ ros, name: '/minirov/commands',     messageType: 'minirov_msgs/VehicleCommand' });
+}
+
+function setupSubscriptions() {
+  new ROSLIB.Topic({ ros, name: '/minirov/vehicle_state', messageType: 'minirov_msgs/VehicleState' }).subscribe(msg => {
+    const f = v => typeof v === 'number' ? v.toFixed(1) : '—';
+    document.getElementById('depth-val').innerHTML   = f(msg.depth)           + '<span class="state-unit">m</span>';
+    document.getElementById('batt-val').innerHTML    = f(msg.battery_voltage) + '<span class="state-unit">V</span>';
+    document.getElementById('heading-val').innerHTML = f(msg.heading)         + '<span class="state-unit">°</span>';
+    document.getElementById('roll-val').innerHTML    = f(msg.roll)            + '<span class="state-unit">°</span>';
+    document.getElementById('pitch-val').innerHTML   = f(msg.pitch)           + '<span class="state-unit">°</span>';
+    document.getElementById('yaw-val').innerHTML     = f(msg.yaw)             + '<span class="state-unit">°</span>';
+    document.getElementById('depth-fill').style.width = Math.min((msg.depth / MAX_DEPTH_M) * 100, 100) + '%';
+    const pct = Math.max(0, Math.min(100, ((msg.battery_voltage - BATT_MIN_V) / (BATT_MAX_V - BATT_MIN_V)) * 100));
+    const bf = document.getElementById('batt-fill');
+    bf.style.width = pct + '%';
+    bf.style.background = pct > 40 ? 'var(--green)' : pct > 20 ? 'var(--amber)' : 'var(--red)';
+    document.getElementById('batt-val').className = 'state-value' + (pct > 40 ? '' : pct > 20 ? ' warn' : ' crit');
+    document.getElementById('mode-badge').textContent = msg.mode || 'UNKNOWN';
+    const ab = document.getElementById('armed-badge');
+    ab.textContent = msg.armed ? 'ARMED' : 'DISARMED';
+    ab.className = 'badge ' + (msg.armed ? 'armed' : 'disarmed');
+    document.querySelectorAll('.mode-btn').forEach(btn =>
+      btn.classList.toggle('active', btn.textContent.trim().toUpperCase().replace(' ','_') === (msg.mode||'')));
+  });
+
+  new ROSLIB.Topic({ ros, name: '/minirov/heartbeat', messageType: 'std_msgs/Bool' }).subscribe(msg => {
+    document.getElementById('heartbeat-dot').classList.toggle('live', msg.data);
+    document.getElementById('heartbeat-label').textContent = msg.data ? 'LIVE' : 'NO HB';
+  });
+
+  new ROSLIB.Topic({ ros, name: '/minirov/llm_response', messageType: 'minirov_msgs/LLMResponse' }).subscribe(msg => {
+    pendingLLMResponse = msg;
+    document.getElementById('llm-action').textContent    = msg.action      || '—';
+    document.getElementById('llm-direction').textContent = msg.direction   || '—';
+    document.getElementById('llm-speed').textContent     = msg.speed    != null ? msg.speed.toFixed(2)    : '—';
+    document.getElementById('llm-duration').textContent  = msg.duration_sec != null ? msg.duration_sec+'s' : '—';
+    document.getElementById('llm-safety').textContent    = msg.safety_note || '—';
+    document.getElementById('llm-reasoning').textContent = msg.reasoning   || '';
+    document.getElementById('llm-panel').classList.add('visible');
+  });
+
+  new ROSLIB.Topic({ ros, name: '/minirov/observations', messageType: 'minirov_msgs/LLMObservation' }).subscribe(msg => {
+    const feed = document.getElementById('obs-feed');
+    const empty = feed.querySelector('.empty-state');
+    if (empty) empty.remove();
+    const el = document.createElement('div');
+    el.className = 'obs-item ' + (msg.severity || 'INFO');
+    el.innerHTML = '<div class="obs-severity">'+(msg.severity||'INFO')+'</div>'
+      + '<div>'+(msg.observation||'')+'</div>'
+      + (msg.recommended_action ? '<div class="obs-recommended">→ '+msg.recommended_action+'</div>' : '');
+    feed.insertBefore(el, feed.firstChild);
+    while (feed.children.length > 20) feed.removeChild(feed.lastChild);
+  });
+
+  new ROSLIB.Topic({ ros, name: '/minirov/commands', messageType: 'minirov_msgs/VehicleCommand' }).subscribe(msg => {
+    const feed = document.getElementById('cmd-feed');
+    const empty = feed.querySelector('.empty-state');
+    if (empty) empty.remove();
+    const el = document.createElement('div');
+    el.className = 'cmd-item';
+    el.innerHTML = '<span class="cmd-action">'+(msg.action||'—')+' '+(msg.direction||'')+'</span>'
+      + '<span class="cmd-meta">'+(msg.speed!=null?msg.speed.toFixed(1):'—')+' • '+(msg.duration_sec||'—')+'s</span>';
+    feed.insertBefore(el, feed.firstChild);
+    while (feed.children.length > 30) feed.removeChild(feed.lastChild);
+  });
+}
+
+function sendUserInput() {
+  const input = document.getElementById('nl-input');
+  const text = input.value.trim();
+  if (!text || !connected) return;
+  publishers.userInput.publish(new ROSLIB.Message({ data: text }));
+  input.value = '';
+}
+
+function sendArmCommand(arm) {
+  if (!connected) return;
+  publishers.armCommand.publish(new ROSLIB.Message({ data: arm }));
+}
+
+function setMode(mode) {
+  if (!connected) return;
+  publishers.modeCommand.publish(new ROSLIB.Message({ data: mode }));
+}
+
+function confirmCommand() {
+  if (!pendingLLMResponse || !connected) return;
+  publishers.commands.publish(new ROSLIB.Message({
+    action: pendingLLMResponse.action||'', speed: pendingLLMResponse.speed||0.0,
+    direction: pendingLLMResponse.direction||'', duration_sec: pendingLLMResponse.duration_sec||0,
+    reasoning: pendingLLMResponse.reasoning||'', safety_note: pendingLLMResponse.safety_note||''
+  }));
+  pendingLLMResponse = null;
+  document.getElementById('llm-panel').classList.remove('visible');
+}
+
+function rejectCommand() {
+  pendingLLMResponse = null;
+  document.getElementById('llm-panel').classList.remove('visible');
+}
+
+function emergencySurface() {
+  if (!connected) return;
+  publishers.commands.publish(new ROSLIB.Message({
+    action:'surface', speed:1.0, direction:'up', duration_sec:60,
+    reasoning:'emergency surface triggered by operator',
+    safety_note:'maximum priority — override all other commands'
+  }));
+}
+
+document.getElementById('nl-input').addEventListener('keydown', e => { if (e.key==='Enter') sendUserInput(); });
+connect();
+</script>
+</body>
+</html>

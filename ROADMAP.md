@@ -1,49 +1,82 @@
-# minirov Roadmap
+# minirov — Roadmap
 
-## Current status
-Phase 0 complete — full LLM to MAVLink pipeline working against ArduSub SITL.
+## Current Status
 
-## Phase 0 — Software foundations ✅
+Phase 0 complete. Phase 1 in progress.
+
+Full LLM → MAVLink pipeline verified against ArduSub SITL.
+Pico 2W flight controller in active development.
+
+---
+
+## Phase 0 — Software Foundations ✅
+
 - MAVLink client with heartbeat watchdog and connection safety
 - Live vehicle state with background telemetry update loop
 - High-level vehicle command layer with preflight arming
 - LLM system prompts for command interpretation and vision analysis
 - Ollama HTTP client with persistent conversation history
 - Operator loop with LLM confirmation gate
+- Dedicated mission logger 
 - ArduSub SITL integration verified end-to-end
 
-## Phase 1 — Electronics bench build
-- Raspberry Pi 5 running Raspberry Pi OS Lite
-- Pixhawk 4 Mini flashed with ArduSub firmware
-- MAVProxy running on Pi, forwarding MAVLink to Mac
-- minirov-brain connecting to real Pi over ethernet
-- Camera streaming Pi to Mac via GStreamer
-- Bar30 depth sensor verified over I2C
-- All systems communicating on bench, dry
+---
 
-## Phase 2 — Enclosure and frame assembly
-- Blue Robotics 4" enclosure housing Pi + Pixhawk
-- Cable penetrators installed and vacuum tested
-- Frame assembled with thruster mounts
-- T200 thrusters wired and bench tested
-- Full vacuum test passed at −10 inHg for 15 minutes
+## Phase 1 — Bench Build 🔄
 
-## Phase 3 — Pool and tank testing
-- Neutral buoyancy achieved with foam and trim weights
-- ArduSub PID tuned in STABILIZE and DEPTH_HOLD modes
-- LLM commands executing in real water
-- Camera stream quality assessed
-- Full battery discharge cycle measured
+Two parallel tracks, both must be complete before Phase 2.
 
-## Phase 4 — Field deployment
-- Lake deployment (calm water, controlled access)
-- Natural language mission execution logged
-- Vision model analysing real underwater frames
-- Coastal deployment
+**Track A — Pico flight controller**
+- IMU (GY-521 MPU-6050) attitude estimation — verified in simulation
+- Complementary filter (roll + pitch) — verified in simulation
+- PWM output to ESCs — verified in simulation
+- Four-thruster mixer
+- Serial command input from ROS 2 (Lenovo)
+- State machine with FAILSAFE mode
+- Hardware validation on physical Pico + GY-521
 
-## Future directions
-- ROS 2 refactor of minirov-brain middleware
+**Track B — Software stack integration**
+- Lenovo running Ubuntu 24.04 + ROS 2 Jazzy
+- ROS 2 nodes communicating with minirov-brain on Mac
+- Serial bridge between ROS 2 and Pico FC
+- End-to-end bench test: Mac → Lenovo → Pico → ESC signal confirmed
+
+---
+
+## Phase 2 — Vehicle Build
+
+- Frame designed and fabricated
+- Blue Robotics 4" enclosure with cable penetrators
+- Vacuum test passed
+- T200 thrusters mounted and bench tested
+- Full system integration — all components in final configuration 
+- Safety checks
+
+---
+
+## Phase 3 — Pool Testing
+
+- Operator checks prior to deployment
+- Neutral buoyancy achieved
+- Flight controller tuned in water
+- LLM commands executing on real vehicle
+- Safety and functional test checklist completed
+- Camera stream assessed
+
+---
+
+## Phase 4 — Field Deployment
+
+- Calm water lake deployment
+- Natural language mission execution
+- Vision pipeline on real underwater frames
+
+---
+
+## Future
+
+- Kalman filter replacing complementary filter
+- MAVLink protocol replacing serial JSON
 - Mission planner with LLM step generation
-- LoRA fine-tuning on logged command/response pairs
-- Hybrid buoyancy-thruster vehicle (v2)
-- Full autonomy mode with operator supervision only at mission level
+- Depth hold with Bar30
+- v2 vehicle with improved frame and enclosure
