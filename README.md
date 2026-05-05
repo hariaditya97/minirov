@@ -12,7 +12,7 @@ at all times.
 
 ## System Architecture
 
-\```
+\
 M4 Pro — Ollama + minirov-brain (operator interface)
         │
         │  ROS 2 over network
@@ -24,7 +24,7 @@ Lenovo Ubuntu — ROS 2 Jazzy (serial bridge)
 Pico 2W — custom flight controller (IMU + attitude + PWM)
         │
 4× T200 thrusters
-\```
+\
 
 ---
 
