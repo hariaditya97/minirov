@@ -13,7 +13,7 @@ class PID:
     def compute(self, error, dt):
         self._integral += error * dt
         self._integral = max(-self.limit, min(self.limit, self._integral))
-        derivative = (error - self._prev_error) / dt
+        derivative = (error - self._prev_error) / dt if dt > 0 else 0.0
         self._prev_error = error
         output = (self.kp * error + (self.ki * self._integral) + (self.kd * derivative))
         return output

@@ -25,5 +25,5 @@ class MPU6050:
   
 
 def init_imu(sda_pin=4, scl_pin=5):
-    i2c = I2C(0, sda=Pin(sda_pin), scl=Pin(scl_pin))
+    i2c = I2C(0, sda=Pin(sda_pin), scl=Pin(scl_pin), freq=400000)
     return MPU6050(i2c)

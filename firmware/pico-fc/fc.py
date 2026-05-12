@@ -30,6 +30,10 @@ class FlightController:
         }
         self.state = State.INIT
         self._last_cmd_time = time.ticks_ms()
+        self._cal_count = 0
+        self._cal_gx = 0.0
+        self._cal_gy = 0.0
+        self._cal_gz = 0.0
 
         print('{"event": "INIT", "msg": "minirov pico-fc starting"}')
 
@@ -50,11 +54,21 @@ class FlightController:
             print('{"event": "CALIBRATING", "msg": "collecting gyro bias"}')
 
         elif self.state == State.CALIBRATING:
-            # gyro bias collection lives here — placeholder for now
-            # transition to READY when complete
-            self.state = State.READY
-            self._update_vehicle("state", State.READY)
-            print('{"event": "READY", "msg": "calibration complete, send ARM"}')
+            imu_data = self.imu.read_all()
+            self._cal_gx += imu_data['gx']
+            self._cal_gy += imu_data['gy']
+            self._cal_gz += imu_data['gz']
+            self._cal_count += 1
+
+            if self._cal_count >= 100:
+                self.estimator.set_gyro_bias(
+                    self._cal_gx / self._cal_count,
+                    self._cal_gy / self._cal_count,
+                    self._cal_gz / self._cal_count
+                )
+                self.state = State.READY
+                self._update_vehicle("state", State.READY)
+                print('{"event": "READY", "msg": "calibration complete, send ARM"}')
 
         elif self.state == State.READY:
             # waiting for ARM command — do nothing except read IMU passively
@@ -146,7 +160,8 @@ class FlightController:
         self.vehicle[key] = value
 
     def _enter_failsafe(self, reason):
-        self.controller.disarm()
+        if hasattr(self, 'controller'):
+            self.controller.disarm()
         self.state = State.FAILSAFE
         self._update_vehicle("state", State.FAILSAFE)
         self._update_vehicle("armed", False)
