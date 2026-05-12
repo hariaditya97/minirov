@@ -3,6 +3,7 @@ import json
 from imu import init_imu
 from attitude import AttitudeEstimator
 from controller import ThrusterController
+from indicators import Indicators
 
 WATCHDOG_MS = 500
 
@@ -41,6 +42,7 @@ class FlightController:
             self.imu = init_imu()
             self.estimator = AttitudeEstimator()
             self.controller = ThrusterController()
+            self.indicators = Indicators()
             print('{"event": "INIT", "msg": "hardware ok"}')
         except Exception as e:
             self._enter_failsafe("hardware init failed: " + str(e))
@@ -106,6 +108,8 @@ class FlightController:
         elif self.state == State.FAILSAFE:
             pass
 
+        self.indicators.update(self.state)
+
     def handle_command(self, cmd):
 
         if self.state == State.FAILSAFE:
@@ -137,6 +141,10 @@ class FlightController:
             else:
                 print('{"event": "IGNORED", "msg": "RESET only valid in FAILSAFE"}')
 
+        elif isinstance(cmd, dict) and cmd.get("heartbeat"):
+            self._last_cmd_time = time.ticks_ms()
+            return
+        
         elif isinstance(cmd, dict):
             if self.state not in (State.ARMED, State.RUNNING):
                 print('{"event": "IGNORED", "msg": "commands only valid when ARMED or RUNNING"}')
@@ -151,11 +159,7 @@ class FlightController:
             if self.state == State.ARMED:
                 self.state = State.RUNNING
                 self._update_vehicle("state", State.RUNNING)
-        
-        elif isinstance(cmd, dict) and cmd.get("heartbeat"):
-            self._last_cmd_time = time.ticks_ms()
-            return
-
+                
         else:
             print('{"event": "ERROR", "msg": "unknown command"}')
 
