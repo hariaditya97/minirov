@@ -1,7 +1,7 @@
 import time
 import json
 from imu import init_imu
-from attitude_estimator import AttitudeEstimator
+from attitude import AttitudeEstimator
 from controller import ThrusterController
 
 WATCHDOG_MS = 500
@@ -126,6 +126,17 @@ class FlightController:
         elif cmd == "DISARM":
             self._enter_failsafe("operator disarm")
 
+        elif cmd == "RESET":
+            if self.state == State.FAILSAFE:
+                self.controller.pid_roll.reset()
+                self.state = State.READY
+                self._update_vehicle("state", State.READY)
+                self._update_vehicle("armed", False)
+                self._last_cmd_time = time.ticks_ms()
+                print('{"event": "READY", "msg": "reset from failsafe, send ARM"}')
+            else:
+                print('{"event": "IGNORED", "msg": "RESET only valid in FAILSAFE"}')
+
         elif isinstance(cmd, dict):
             if self.state not in (State.ARMED, State.RUNNING):
                 print('{"event": "IGNORED", "msg": "commands only valid when ARMED or RUNNING"}')
@@ -140,6 +151,10 @@ class FlightController:
             if self.state == State.ARMED:
                 self.state = State.RUNNING
                 self._update_vehicle("state", State.RUNNING)
+        
+        elif isinstance(cmd, dict) and cmd.get("heartbeat"):
+            self._last_cmd_time = time.ticks_ms()
+            return
 
         else:
             print('{"event": "ERROR", "msg": "unknown command"}')

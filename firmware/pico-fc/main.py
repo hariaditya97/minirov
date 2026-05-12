@@ -1,21 +1,24 @@
-import sys, json, time
+import sys, json, time, select
 from fc import FlightController
 
 LOOP_MS = 20
 
+import select
+
 def parse_input_and_handle(fc):
-    line = sys.stdin.readline()
-    if not line:
-        return
-    line = line.strip()
-    if line.startswith('{'):
-        try:
-            cmd = json.loads(line)
-            fc.handle_command(cmd)
-        except Exception:
-            print('{"event": "ERROR", "msg": "invalid JSON"}')
-    else:
-        fc.handle_command(line)
+    if select.select([sys.stdin], [], [], 0)[0]:
+        line = sys.stdin.readline()
+        if not line:
+            return
+        line = line.strip()
+        if line.startswith('{'):
+            try:
+                cmd = json.loads(line)
+                fc.handle_command(cmd)
+            except Exception:
+                print('{"event": "ERROR", "msg": "invalid JSON"}')
+        else:
+            fc.handle_command(line)
         
 def main():
     fc = FlightController()
